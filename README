@@ -1,8 +1,18 @@
+== Responsive Images For the People!
+
+=== What is this?
+
 This project is a chopped-down version of the Filament Group's responsive images example - specifically, the data-attribute-based branch. It's an exercise in choosing which image to serve to a client based on device capabilities.  Large-screen devices presumably have more bandwidth, so they get the full-sized image (big.jpg). Small-screen devices are likely to be mobile, and can't display the large image properly anyway, so they get the small image (small.jpg).
+
+=== Origins
 
 This code is substantially similar to the original Filament Group code, but is boiled down to the simplest format we could make it. We needed to change a few things about the Filamental HTML, which in our tests caused the base-tag rewrite to occur at the wrong time, negating the image-rewriting interactions between client and server.
 
+== Installation
+
 You can simply put this on any Apache server, and change the base.href on line 13 of index.html to point at the fully-qualified domain name of your server. Assuming your Apache vhost allows the use of .htaccess files, everything should work, if you're using a new/sexy browser.  Firefox 3.x, IE < 8 don't work, for sure.  
+
+== Usage
 
 To test it out, take a look at the HTTP requests and responses using something like HTTPFox. You should see requests for the 1-pixel .gifs, then *either* the big.jpg *or* the small.jpg depending on how large your screen size is.
 
