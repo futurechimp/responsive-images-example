@@ -6,7 +6,7 @@ This project is a chopped-down version of the Filament Group's responsive images
 
 === Origins
 
-This code is substantially similar to the original Filament Group code, but is boiled down to the simplest format we could make it. We needed to change a few things about the Filamental HTML, which in our tests caused the base-tag rewrite to occur at the wrong time, negating the image-rewriting interactions between client and server.
+This code is substantially similar to the original Filament Group code at https://github.com/filamentgroup/Responsive-Images/tree/data-attribute-based, but is boiled down to the simplest format we could make it. We needed to change a few things about the Filamental HTML, which in our tests caused the base-tag rewrite to occur at the wrong time, negating the image-rewriting interactions between client and server.
 
 == Installation
 
