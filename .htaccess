@@ -1,0 +1,11 @@
+# //Start Responsive Images 
+RewriteEngine On
+#RewriteLogLevel 3
+#RewriteLog "/var/log/responsive-images-test-rewrite.log"
+# # direct image requests to temp
+RewriteRule .*rwd-router/.*\.r\.(jpe?g|png|gif)$ images/rwd.gif [L]
+# # ignore trap for non-image requests, rewrite URL without trap segment
+RewriteRule (.*)rwd-router/(.*)$ $1$2 
+# # remove .r from all requests
+RewriteRule (.*)\.r(\.(jpe?g|png|gif))$ $1$2
+# # //End Responsive Images

@@ -1,0 +1,90 @@
+Responsive images:
+
+We've been putting a lot of effort into thinking about mobile lately. The internet is in the process of turning itself inside-out: what used to be a kind of gigantic information water-balloon up in the sky, separate from "real life", is now in the process of bursting, and drenching everyone and everything with TCP/IP packets in the process.  (Minimal) bandwidth is everywhere in London except on the Tube. It's that "minimal" part which is proving tricky. 
+
+A big part of what we do is visual design work - our designers do amazing work making ugly things beautiful.  We need to showcase this on our site, so obviously we want the images to look their best when displayed on a large device such as a desktop computer. 
+
+Mobiles, though, have very limited bandwidth.  We need to be able to detect what sort of device a user is using, and display appropriately-sized graphics if they're on a mobile device. For the recent website redesign, we decided to experiment with responsive layouts and image-serving.  The rule for image sizes was fairly simple: to save bandwidth on mobile, a desktop machine should display an image which is roughly twice the pixel size of a smartphone in portrait mode. 
+
+This is a lot trickier than it would initially seem. The HTML spec defines no way of figuring out what image to deliver to a device, so we need to resort to cleverness. 
+
+One clever crew is the http://www.filamentgroup.com/ Filament Group.  They have come up with multiple ways of solving the problem of responsive image-serving, and put it together as a series of blog posts http://filamentgroup.com/lab/responsive_images_experimenting_with_context_aware_image_sizing/ and github repositories https://github.com/filamentgroup/Responsive-Images
+
+We took a crack at using their techniques on our new responsively-designed website.  We attempted to use the "data attribute based" responsive image ideas expressed in the codebase at https://github.com/filamentgroup/Responsive-Images/tree/data-attribute-based
+
+The long and short of it: this technique works pretty well for new browsers, but not enough browsers (from our standpoint) to make it a production-ready solution.  It's extremely interesting if you're into responsive design, though, so we've taken it all apart to talk about how it works.
+
+At page load, the win.onload javascript does this:
+
+win.onload = function(){	
+		if( base ) {
+			//set base back to something real before removing
+			base.href = dirPath;
+			head.removeChild(base);
+		}
+		findrepsrc();
+		if( winload ){
+			winload();
+		}
+	};
+
+This triggers a whole whack of js DOM manipulation  - read the full source at https://github.com/filamentgroup/Responsive-Images/blob/data-attribute-based/rwd-images/rwd-images.js
+
+If the user's browser supports adding a <base> tag, the "base" function will write a new <base> element into the page. The value of the <base> element will be the full URL path of the page, up to the last "/" character in the URI, and then the string "rwd-router" is added to the end.  So if the page is at "http://foo.org/bar/blah.html", the new <base> value will be "http://foo.org/bar/rwd-router/"
+
+NB The placement of the base.href insertion code within the page appears to be crucial.  It needs to be positioned *after* the <head> element has completed loading, so that it's possible for the browser to insert the <base> element properly into the <head>. However, it needs to occur *before* any image tags appear, otherwise the image tags in your page will (quite naturally) just go ahead and request their src URLs.  The symptoms of this:  you'll never see the one-pixel gif image rewrite, and you'll *always* load both the small and large versions of your images, wasting a lot of bandwidth. 
+
+From this point on, every request that the page sends to the server (for images, flash, and any other resource embedded in the page) will have that "/rwd-router/" stuff tacked onto the end of it.  These requests will all get filtered through a set of Apache rewrite rules:
+
+# //Start Responsive Images 
+RewriteEngine On
+# # direct image requests to temp
+RewriteRule .*rwd-router/.*\.r\.(jpe?g|png|gif)$ images/rwd.gif [L]
+# # ignore trap for non-image requests, rewrite URL without trap segment
+RewriteRule (.*)rwd-router/(.*)$ $1$2 
+# # remove .r from all requests
+RewriteRule (.*)\.r(\.(jpe?g|png|gif))$ $1$2
+# # //End Responsive Images
+
+Ok, it looks like PHP or vomit to those of us who don't read this kind of thing every day, so let's break it down.
+
+ RewriteRule .*rwd-router/.*\.r\.(jpe?g|png|gif)$ images/rwd.gif [L]
+
+All requests with "/rwd-router/" in the URL which are requests for images in the form foo.r.extension (e.g. a request to a URL ending in "/rwd-router/foo.r.jpg") should receive the image at "images/rwd.gif". 
+
+ RewriteRule (.*)rwd-router/(.*)$ $1$2 
+
+This one allows any non-mobile resources embedded in the page to keep functioning. If the "/rwd-router/" request isn't for an image with a ".r.extension" in it, just remove the "/rwd-router/" part and give back the requested content as per normal. 
+
+ RewriteRule (.*)\.r(\.(jpe?g|png|gif))$ $1$2
+ 
+Remove the ".r" part from any image requests (your files on the filesystem do NOT need to have the ".r" in them, that's only in the request URL for the purpose of detecting mobile images which need to be replaced).
+
+Javascript then tests for the existence of an HTML5 attribute, "data-fullsrc", in every <img> tag in the page.  The "data-fullsrc" attribute has already been written into the page by the CMS. This allows Javascript to identify which images are candidates for dynamic rewriting. The "data-fullsrc" attribute points at the large version of the image, while the normal "src" attribute of the images points to the mobile version. 
+
+By default, the mobile version of the image will be served if either of the following conditions are true:
+
+a) Javascript is off
+b) the size of the devices screen, as detected by Javascript, is less than 480 pixels wide.
+
+If the device has a screen width of greater than 480 pixels, it counts as being a non-mobile device.  In this case, Javascript loops through all <img> tags and rewrite the value of the "src" attribute to be the value of the "data-fullsrc" attribute. The page will immediately request the full-sized images from the server and display those instead of the 1-pixel rwd-image.gif.
+
+The final result is quite nice: the browser requests a 1-pixel placeholder .gif for each image on the page, and then requests either the large or small image depending on device screen width. 
+
+There are some pros and cons of this approach:
+
+PROs
+
+* it doesn't require anything complex of your web back-end web framework. If you can get the data-fullsrc attribute into your web page, you're in fine shape.
+
+* the use of the .htaccess file, if your server setup supports this, is relatively simple from a deployment point of view
+
+CONs
+
+* it only works in new and/or sexy browsers. No IE, no Firefox 3.x.
+
+* the whole setup is quite difficult to understand.  We routinely needed to refer to this document about how it works whenever reasoning about what the next step in implementation was. 
+
+* it requires you to write an extra ".r." into your image paths, which can suck depending on how your back-end code generation works. 
+
+In the end, we gave up on this approach. We were very excited about it, and put a lot of time into implementing it on our website, but it didn't work in enough browsers to adopt it as a standard part of our production process.  Our respect goes out to the Filament Group people, though, for opening our eyes up to the possibilities of this kind of approach. It served as a large part of the inspiration for the approach we are going to try next. Stay tuned! 
